@@ -1,0 +1,58 @@
+window.addEventListener('DOMContentLoaded', async () => {
+    const textarea = document.getElementById('note');
+    const saveBtn = document.getElementById('save');
+
+    const savedNote = await window.electronAPI.loadNote();
+    textarea.value = savedNote;
+
+    // Manual save
+    saveBtn.addEventListener('click', async () => {
+        try {
+            await window.electronAPI.saveNote(textarea.value);
+            alert('Note saved successfully!');
+        } catch (err) {
+            console.error('Manual save failed:', err);
+        }
+    });
+
+
+    const saveNote = await window.electronAPI.loadNote();
+    textarea.value = saveNote;
+    let lastSavedText = textarea.value;
+
+    async function autosave() {
+        const currentText = textarea.value;
+        if (currentText === lastSavedText) {
+            statusEl.textContent = "No change to save";
+            return;
+        }
+        try {
+            await window.electronAPI.saveNote(currentText);
+            lastSavedText = currentText;
+            const now = new Date().toLocaleTimeString();
+            statusEl.textContent = `Auto-saved at ${now}`;
+        } catch (err) {
+            console.error(`Auto-save failed:`, err);
+            statusEl.textContent = `Auto-save error!`;
+        }
+    }
+
+    let debounceTimer;
+
+    textarea.addEventListner('input', () => {
+        statusEl.textContent = 'Changes detected - auto-saving in 5s...';
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(autoSave, 5000);
+    });
+    // New: save as button
+    const saveAsBtn = document.getElementById('saveAs');
+    saveAsBtn.addEventListener('click', async () => {
+        const result = await window.electronAPI.saveNoteAs(textarea.value);
+        if (result.success) {
+            lastSavedText = textarea.value; // Update last saved text
+            statusEl.textContent = `Saved as ${result.filePath}`;
+        } else {
+            statusEl.textContent = `Save As cancelled.`;
+        }
+    });
+});
